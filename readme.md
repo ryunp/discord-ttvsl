@@ -26,14 +26,14 @@ Two sections, **Header** and **Stream List**, make up the display layout. Sectio
 |---|---|
 |Auto Update Info*|✓ AutoUpdate (2h)|
 |Game Name*|Diablo II: Lord of Destruction|
-|Stream Title Filter*|Filter: median ?(xl)?|mxl (displaying 3/21)|
+|Stream Title Filter*|Filter: median ?(xl)?\|mxl (displaying 3/21)|
 |Last Update Time*|Last Update: 2/10/2020 01:06:53 (-0800)|
 
 ## Stream List Section  
 The stream title is hard coded to a maximum display of 80 characters. Each stream is rendered using the same template below:
 |Description|Example|
 |---|---|
-|Stream URL (& Stream Details*)|https://twitch.tv/TurdFerguson (1h 39m uptime, 69 viewers)|
+|Stream URL (& Stream Details*)|<noLinkingWorkdAround>h</noLinkingWorkdAround>ttps://twitch.tv/TurdFerguson (1h 39m uptime, 69 viewers)|
 |Stream Title|Just casually lvling a sin -  Selffound! - !sellout !uldy - Median XL - We ma...|
 
 # Commands
@@ -54,7 +54,7 @@ Commands are prefixed with an exclimation mark (`!`). The `args` column uses par
 |showgame|(true\|false)|`!showgame true`|Toggles header's game name|
 |showlastupdated|(true\|false)|`!showlastupdated false`|Toggles header's last updated information|
 |showstreamdetails|(true\|false)|`!showstreamdetails true`|Toggles stream's extra details|
-|titlefilter|<REGEX_STRING>|`!filter median ?(xl)?|mxl`|Set the RegEx string that inclusively filters stream titles (no delimiters or flags)|
+|titlefilter|<REGEX_STRING>|`!filter median ?(xl)?\|mxl`|Set the RegEx string that inclusively filters stream titles (no delimiters or flags)|
 |update||`!update`|Manually update the stream list|
 
 # Contributors

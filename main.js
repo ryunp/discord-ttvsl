@@ -21,7 +21,6 @@ const State = require('./lib/state')
 const timestamp = require('./lib/timestamp')
 const TwitchApi = require('./lib/twitchApi')
 
-// var twitch
 var state
 var twitchApi
 var discordClient
@@ -50,7 +49,6 @@ async function onStateLoad (loadedState) {
     clientId: auth.twitchBotId,
     accessToken: auth.twitchBotAccessToken
   }
-  // twitch = new Twitch(twitchCreds) // // TwitchJS lib
   twitchApi = new TwitchApi(twitchCreds)
 
   // Init Discord client
@@ -544,8 +542,7 @@ async function clearOtherChannelMessages () {
 async function cacheTwitchStreams () {
   await cacheTwitchGameData()
 
-  // state.twitchStreamCache = await twitch.get('streams', { search: { game_id: gameData.id } }) // TwitchJS lib
-  state.twitchStreamCache = await twitchApi.getStreams({ game_id: state.twitchGame.id }) // Custom twitch lib
+  state.twitchStreamCache = await twitchApi.getStreams({ game_id: state.twitchGame.id })
   serverLogInfo(`${state.twitchStreamCache.length} '${state.twitchGame.name}' streams cached`)
 }
 
@@ -557,8 +554,7 @@ async function cacheTwitchGameData (gameName = state.saved.twitchGameName) {
     }
   }
 
-  // const gameData = await twitch.get('games', { search: { name: gameName } }) // TwitchJS lib
-  const gameData = await twitchApi.getGames({ name: gameName }) // Custom twitch lib
+  const gameData = await twitchApi.getGames({ name: gameName })
   state.twitchGame = gameData
   state.saved.twitchGameName = gameData.name
   serverLogInfo(`Twitch game data cached for '${gameData.name}'`)
