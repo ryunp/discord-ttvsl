@@ -4,20 +4,22 @@ Display the latest Twitch Streams in Discord intuitively and efficiently for a g
 ![Discord Display Example](/media/discord_display_example.png)
 
 # Features
-**Efficient Implementation**  
+Most details of the following features are configurable during runtime.
+
+**Efficient Rendering Strategy**  
 The display strategy chosen is rendering text to a single, reused message. This keeps the discord servers happy, as well as our brains, due to less data overhead.
 
 **Clean Design**  
-Less is more. The display layout allows most of the sections to be toggled on/off. Commands to change sections start with `show`, such as `showfilter`.
+Less is more. The display layout allows most of the sections to be toggled on/off.
 
 **Auto Updates**  
-The auto update system can be enabled and disabled with the `autoupdate` command. It's update frequency is set with the `interval` command and requires a minuimum of 10 minutes (to prevent API spamming).
+The auto update system provides set and forget mentality.
 
 **It Actually Feels Good Man**  
 I often miss the functionality when taking it down during debugging. :crying:
 
 # Display 
-Two sections, **Header** and **Stream List**, make up the display layout. Sections marked with an asterisk can have their visibility changed with a [command](#commnds).
+Two sections, **Header** and **Stream List**, make up the display layout. Sections marked with an asterisk can have their visibility changed with a [command](#commands).
 
 ## Header Section
 |Description|Example|
@@ -31,7 +33,7 @@ Two sections, **Header** and **Stream List**, make up the display layout. Sectio
 The stream title is hard coded to a maximum display of 80 characters. Each stream is rendered using the same template below:
 |Description|Example|
 |---|---|
-|Stream URL & (Stream Details*)|https://twitch.tv/TurdFerguson (1h 39m uptime, 69 viewers)|
+|Stream URL (& Stream Details*)|https://twitch.tv/TurdFerguson (1h 39m uptime, 69 viewers)|
 |Stream Title|Just casually lvling a sin -  Selffound! - !sellout !uldy - Median XL - We ma...|
 
 # Commands
