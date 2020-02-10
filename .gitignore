@@ -1,0 +1,7 @@
+# Local project directories
+node_modules
+.vscode
+
+# Sensitive files
+auth.js
+settings.json
