@@ -440,7 +440,7 @@ async function updateDisplay () {
   // Ghetto permission checks
   const displayChannel = getDisplayChannel()
   const channelPermissions = displayChannel.permissionsFor(discordClient.user)
-  if (channelPermissions.missing(config.CHANNEL_PERMS).length) {
+  if (channelPermissions.missing(config.REQ_CHANNEL_PERMS).length) {
     serverLogError(`Bot missing permissions: ${channelPermissions.join(', ')}`)
     process.emit('exit')
     return
