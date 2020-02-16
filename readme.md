@@ -1,27 +1,56 @@
 # Purpose
-Display the latest Twitch Streams in Discord intuitively and efficiently for a given game name and stream title contents.
+Display the latest Twitch Streams in Discord intuitively and efficiently for a chosen game and stream title.
 
-![Discord Display Example](/media/discord_display_example.png)
+Most bots I've seen use a `Notification Event Strategy`, where a Twitch `Stream Changed` event will create a new message in a designated Discord channel:  
+![Notification Event Strategy](/media/notification_strategy.png)
 
-# Features
-Most details of the following features are configurable during runtime.
+Some of the issues with this system are:
+- Discord's text channel behavior is to keep the scroll position at the last seen message
+  - Visiting the designated notification channel presents old messages
+- Video embed consumes a large amount of screen space and useless notification text
+  - Information layout is ineffecient and redundant
+- Lack of offline notification message
+  - State of the stream is not immediately apparant
 
+These issues cause unnecessary inconveniences:
+1. Users are forced to scroll down for the latest notification messages
+2. Users can only fit a few notification messsages in their text channel window
+3. Users have no way of knowing if these streamers listed are still online
+
+# Design Goals
 **Efficient Rendering Strategy**  
-The display strategy chosen is rendering text to a single, reused message. This keeps the discord servers happy, as well as our brains, due to less data overhead.
+Reuse a single discord message for intuitive, centralized information.
 
-**Clean Design**  
-Less is more. The display layout allows most of the sections to be toggled on/off.
+**Clean Information Layout**  
+Less is more; only display textual information about streams. Provide facilities to show application state information.
 
-**Auto Updates**  
-The auto update system provides set and forget mentality.
+**Information Synchronization**  
+Provide a facility to continually update the stream information without manual intervention.
 
-**It Actually Feels Good Man**  
-I often miss the functionality when taking it down during debugging. :crying:
+# Implementation Strategy
+The approach for this bot is to use a static interval to update the stream data. Information about the streams will be formatted to provide the most amount of information in the least amount of space possible.
 
-# Display 
+Here are some visuals of a prototype bot featuring the desired functionality:  
+![Static Interval Strategy](/media/message_strategy.png)  
+![Animated Usage Example GIF](/media/ttvsl_simple_example.gif)
+
+## Technology
+This first iteration of the bot is more of a quick prototype to get familiar with the technology. It is not setup to simultaneously service multiple guilds. It uses [Discord.js](https://github.com/discordjs/discord.js) for the discord client management. Twitch API is handled through very basic custom request wrappers.
+
+### Future Goals
+The next iteration is to add Discord.js's [Commando](https://discord.js.org/#/docs/commando/master/general/welcome) framework and [TwitchJS](https://github.com/twitch-js/twitch-js).
+
+- Integrate Discordjs Commando command framework
+- Integrate TwitchJS API library
+- Ensure app state handles multiple guilds
+- Improve stream data caching strategy to handle multiple guilds
+
+Many examples of discord bots will inject their application state into the object structure of the Client object. This gives per-guild state an easily accessable location during run-time, but still leaves the questions of persistence. Using the current strategy of an external app state object should keep discord client and application state isolated.
+
+## Display 
 Two sections, **Header** and **Stream List**, make up the display layout. Sections marked with an asterisk can have their visibility changed with a [command](#commands).
 
-## Header Section
+### Header Section
 |Description|Example|
 |---|---|
 |Auto Update Info*|✓ AutoUpdate (2h)|
@@ -29,14 +58,14 @@ Two sections, **Header** and **Stream List**, make up the display layout. Sectio
 |Stream Title Filter*|Filter: median ?(xl)?\|mxl (displaying 3/21)|
 |Last Update Time*|Last Update: 2/10/2020 01:06:53 (-0800)|
 
-## Stream List Section  
+### Stream List Section  
 The stream title is hard coded to a maximum display of 80 characters. Each stream is rendered using the same template below:
 |Description|Example|
 |---|---|
-|Stream URL (& Stream Details*)|<noLinkingWorkdAround>h</noLinkingWorkdAround>ttps://twitch.tv/TurdFerguson (1h 39m uptime, 69 viewers)|
+|Stream URL (& Stream Details*)|<noLink>h</noLink>ttps://twitch.tv/TurdFerguson (1h 39m uptime, 69 viewers)|
 |Stream Title|Just casually lvling a sin -  Selffound! - !sellout !uldy - Median XL - We ma...|
 
-# Commands
+## Commands
 Commands are prefixed with an exclimation mark (`!`). The `args` column uses parenthesis and pipe characters to indicate a set of inputs that are acceptable. Anything between angled bracket characters (less/greater than) indicates what type of information it accepts.
 |Command|args|Example|Descrption|
 |---|---|---|---|
@@ -56,6 +85,3 @@ Commands are prefixed with an exclimation mark (`!`). The `args` column uses par
 |showstreamdetails|(true\|false)|`!showstreamdetails true`|Toggles stream's extra details|
 |titlefilter|<REGEX_STRING>|`!filter median ?(xl)?\|mxl`|Set the RegEx string that inclusively filters stream titles (no delimiters or flags)|
 |update||`!update`|Manually update the stream list|
-
-# Contributors
-ryunp, Status Code 429
