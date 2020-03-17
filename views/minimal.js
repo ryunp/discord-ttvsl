@@ -1,7 +1,7 @@
 const d3 = require('d3-time-format')
+const Discord = require('discord.js')
 
-const discordTextFormat = require('../lib/DiscordText')
-const ms = require('../lib/Milliseconds')
+const ms = require('../lib/milliseconds')
 const config = require('../config')
 
 const msToTimeUnits = value => ms.toTimeUnits(value, { units: ['d', 'h', 'm'] })
@@ -24,19 +24,21 @@ module.exports = function MinimalView (state) {
   ].filter(Boolean).join(' ')
 
   // Prepare content header Game Name status
-  const gameNameStr = discordTextFormat.bold(state.saved.twitchGameName)
+  const gameNameStr = Discord.util.escapeBold(state.saved.twitchGameName)
 
   // Prepare content header Stream Title Filter status
   const totalStreamCount = state.twitchStreamCache.length
   const filteredStreamCount = streamerList.length
   const displayCountStr = `${filteredStreamCount}/${totalStreamCount}`
   const titleFilterStr = [
-    `Filter: ${discordTextFormat.codeInline(state.saved.streamTitlefilter)}`,
-    discordTextFormat.italic(`(displaying ${displayCountStr})`)
+    `Filter: ${Discord.util.escapeInlineCode(state.saved.streamTitlefilter)}`,
+    Discord.util.escapeItalic(`(displaying ${displayCountStr})`)
   ].join(' ')
 
   // Prepare content header Last Updated status
-  const lastUpdated = d3.timeFormat('%x %H:%M:%S (%Z)')(Date.now())
+  const curDate = new Date()
+  const curTimeUTC = curDate.getTime() + curDate.getTimezoneOffset() * 60 * 1000
+  const lastUpdated = d3.timeFormat('%-m/%-d/%y %H:%M UTC')(curTimeUTC)
   const lastUpdatedStr = `Last Update: ${lastUpdated}`
 
   // Build header info
@@ -48,9 +50,14 @@ module.exports = function MinimalView (state) {
   ].filter(Boolean).join('\n')
 
   // Build content body streamer list
-  const contentBody = streamerList.map(streamData =>
-    buildStreamInfo(state, streamData)
-  ).join('\n\n')
+  let contentBody
+  if (streamerList.length) {
+    contentBody = streamerList.map(streamData =>
+      buildStreamInfo(state, streamData)
+    ).join('\n\n')
+  } else {
+    contentBody = 'No targeted streams detected. Stay awhile and listen!'
+  }
 
   // Return final composition
   return `${contentHeader}\n\n${contentBody}`
@@ -72,14 +79,14 @@ function buildStreamInfo (state, streamData) {
 
   // Build stream details
   const streamDetailsStr = [
-    discordTextFormat.urlNoPreview(streamUrlStr),
+    `<${streamUrlStr}>`,
     state.saved.showStreamDetails ? streamStatsStr : null
   ].filter(Boolean).join(' ')
 
   // Build stream info
   const streamInfoStr = [
     streamDetailsStr,
-    discordTextFormat.italic(streamTitleStr)
+    Discord.util.escapeItalic(streamTitleStr)
   ].join('\n')
 
   // Return final composition

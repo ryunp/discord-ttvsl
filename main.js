@@ -7,29 +7,26 @@
  * Register Discord Bot: https://discordapp.com/oauth2/authorize?&client_id=<ID>&scope=bot
  */
 
+// const Twitch = require('twitch-js')
 const Discord = require('discord.js')
 const process = require('process')
 
-// const Twitch = require('twitch-js')
 const auth = require('./auth')
 const config = require('./config')
-const delayedAsync = require('./lib/delayedAsync')
-const discordText = require('./lib/discordText')
+
 const DynamicInterval = require('./lib/DynamicInterval')
+const TwitchApi = require('./lib/TwitchApi')
 const milliseconds = require('./lib/milliseconds')
 const State = require('./lib/state')
-const timestamp = require('./lib/timestamp')
-const TwitchApi = require('./lib/twitchApi')
+const delayedAsync = require('./lib/delayedAsync')
+const serverLog = require('./lib/serverLog')
+
+const msToTimeUnits = ms => milliseconds.toTimeUnits(ms, { units: ['d', 'h', 'm'] })
+const msFromTimeUnits = args => milliseconds.fromTimeUnits(args)
 
 var state
 var twitchApi
 var discordClient
-
-const serverLogError = msg => console.error(timestamp`[${Date.now()}]`, msg)
-const serverLogInfo = msg => console.log(timestamp`[${Date.now()}]`, msg)
-
-const msToTimeUnits = ms => milliseconds.toTimeUnits(ms, { units: ['d', 'h', 'm'] })
-const msFromTimeUnits = args => milliseconds.fromTimeUnits(args)
 
 process.once('exit', onAppExit)
 process.once('SIGINT', onAppExit)
@@ -39,24 +36,23 @@ State.load().then(onStateLoad)
 async function onStateLoad (loadedState) {
   state = loadedState
 
-  // Frequency limit to reduce excessive Twitch/Discord API calls
-  // Arg: [minimum, (no maximum)]
   const ms = msFromTimeUnits(state.saved.updateInterval)
-  state.autoUpdater = new DynamicInterval(updateCacheAndRender, ms, [config.MIN_UPDATE_INTERVAL])
+  state.autoUpdater = new DynamicInterval(updateCacheAndRender, ms)
 
   // Init Twitch API
   const twitchCreds = {
     clientId: auth.twitchBotId,
-    accessToken: auth.twitchBotAccessToken
+    accessToken: state.saved.twitchAccessToken
   }
-  twitchApi = new TwitchApi(twitchCreds)
+  const onNewTwitchToken = token => { state.saved.twitchAccessToken = token }
+  twitchApi = new TwitchApi(twitchCreds, onNewTwitchToken)
 
   // Init Discord client
   discordClient = new Discord.Client()
 
   // Setup Discord event handlers
   discordClient
-    .on('error', serverLogError)
+    .on('error', serverLog.error)
     .on('message', onDiscordMessage)
     .on('disconnect', onDiscordClientDisconnect)
     .on('ready', onDiscordReady)
@@ -64,10 +60,10 @@ async function onStateLoad (loadedState) {
   // Establish connection with Discord servers
   try {
     await discordClient.login(auth.discordBotToken)
-    serverLogInfo(`Logged in as ${discordClient.user.tag}!`)
+    serverLog.info(`Logged in as ${discordClient.user.tag}!`)
   } catch (error) {
-    serverLogError(error)
-    serverLogInfo('Discord API authentication failed, exiting...')
+    serverLog.error(error)
+    serverLog.info('Discord User Authentication failed, exiting...')
     process.emit('exit')
   }
 }
@@ -78,9 +74,10 @@ async function onDiscordReady () {
     state.autoUpdater.start()
     await updateCacheAndRender()
   } catch (error) {
-    serverLogError(error)
-    serverLogInfo('Failed initial display procedure')
+    serverLog.error(error)
+    serverLog.info('Failed initial display procedure')
     process.emit('exit')
+    throw error
   }
 }
 
@@ -93,13 +90,17 @@ async function updateCacheAndRender () {
 const commands = {
   admins: async function adminUsersCmd (msg, args) {
     const subCmds = {
-      add: adminAddId,
-      del: adminDeleteId
+      add: addId,
+      del: deleteId
     }
 
     if (!args.length) {
       const users = discordClient.users
-      const adminTags = state.saved.adminUserIds.map(id => users.get(id).tag)
+      const adminTags = state.saved.adminUserIds.map(id => {
+        if (users.get(id)) {
+          return users.get(id).tag
+        }
+      })
       await msg.channel.send(`\`${adminTags.join(', ')}\``)
       return
     }
@@ -115,31 +116,32 @@ const commands = {
     const admins = new Set(state.saved.adminUserIds)
     state.saved.adminUserIds = Array.from(admins)
 
-    async function adminDeleteId (delId) {
+    async function deleteId (delId) {
       const displayChannel = getDisplayChannel()
 
       if (delId.startsWith('<')) {
         delId = delId.match(/<@!(\d+)>/)[1]
       }
 
-      if (state.saved.adminUserIds.includes(delId)) {
+      const adminIds = state.saved.adminUserIds
+      if (adminIds.includes(delId)) {
         const user = discordClient.users.get(delId)
         var resultMsg
 
         if (user) {
-          resultMsg = discordText.codeInline(user.tag)
+          resultMsg = discordClient.util.codeInline(user.tag)
         } else {
-          resultMsg = `${discordText.codeInline(delId)} (no longer in server)`
+          resultMsg = `${discordClient.util.codeInline(delId)} (no longer in server)`
         }
 
-        state.saved.adminUserIds = state.saved.adminUserIds.filter(id => id !== delId)
+        state.saved.adminUserIds = adminIds.filter(id => id !== delId)
         displayChannel.send(`Removed ${resultMsg}`)
       } else {
         displayChannel.send('Not in admin list')
       }
     }
 
-    async function adminAddId (addId) {
+    async function addId (addId) {
       const displayChannel = getDisplayChannel()
       const user = discordClient.users.get(addId)
 
@@ -176,7 +178,7 @@ const commands = {
       state.autoUpdater.start()
 
       const ms = state.autoUpdater.getInterval()
-      serverLogInfo(`Updating stream list every ${msToTimeUnits(ms)}`)
+      serverLog.info(`Updating stream list every ${msToTimeUnits(ms)}`)
     }
 
     async function disable () {
@@ -186,7 +188,7 @@ const commands = {
       state.saved.autoUpdate = false
       state.autoUpdater.stop()
 
-      serverLogInfo('No longer updating stream list')
+      serverLog.info('No longer updating stream list')
     }
   },
 
@@ -241,7 +243,7 @@ const commands = {
       await await msg.channel.send(`Changed game to \`${state.twitchGame.name}\``)
     } catch (error) {
       state.saved.twitchGameName = prevGameName
-      serverLogError(error)
+      serverLog.error(error)
       await msg.channel.send(error.message)
       throw error
     }
@@ -250,7 +252,7 @@ const commands = {
   interval: async function intervalCmd (msg, args) {
     if (!args.length) {
       await msg.channel.send(`\`${state.saved.updateInterval}\``)
-      return
+      return false
     }
 
     const ms = msFromTimeUnits(args.join(' '))
@@ -259,15 +261,14 @@ const commands = {
       const timeUnits = milliseconds.getTimeUnits()
       const timeUnitsStr = timeUnits.map(unit => `${unit}`).join('|')
       await msg.channel.send(`Usage: !interval (#[${timeUnitsStr}])+`)
-      return
+      return ms
     }
 
-    if (state.autoUpdater.setInterval(ms) instanceof Error) {
-      const minTime = msToTimeUnits(state.autoUpdater.getMinInterval())
-      await msg.channel.send(`Must be at least ${minTime}`)
-      return
+    if (ms < config.MIN_UPDATE_INTERVAL) {
+      return RangeError(`Must be at least ${msToTimeUnits(config.MIN_UPDATE_INTERVAL)}`)
     }
 
+    state.autoUpdater.setInterval(ms)
     state.saved.updateInterval = msToTimeUnits(ms)
     await updateDisplay()
     await msg.channel.send(`Rate changed to \`${msToTimeUnits(ms)}\``)
@@ -275,7 +276,7 @@ const commands = {
 
   listsize: async function listsizeCmd (msg, args) {
     if (!args.length) {
-      await msg.channel.send(`\`${state.maxStreamListItems}\``)
+      await msg.channel.send(`\`${state.saved.streamDisplayMax}\``)
       return
     }
 
@@ -283,13 +284,13 @@ const commands = {
 
     // Error Check: Bad argument
     if (!Number.isInteger(integer)) {
-      await msg.channel.send(`Usage: \`!listsize <0-${state.maxStreamListItems}>\``)
+      await msg.channel.send(`Usage: \`!listsize <0-${config.MAX_STREAM_LIST}>\``)
       return
     }
 
     // Error Check: Out of range
-    if (integer < 0 || state.maxStreamListItems < integer) {
-      await msg.channel.send(`Argument must be between \`0 - ${state.maxStreamListItems}\``)
+    if (integer < 0 || config.MAX_STREAM_LIST < integer) {
+      await msg.channel.send(`Argument must be between \`0 - ${config.MAX_STREAM_LIST}\``)
       return
     }
 
@@ -407,8 +408,8 @@ const commands = {
 
       await msg.channel.send(`Stream title filter set to: ${`\`${regEx}\``}`)
     } catch (error) {
-      serverLogError(error)
-      serverLogInfo(`Invalid RegExp string: '${regExString}'`)
+      serverLog.error(error)
+      serverLog.info(`Invalid RegExp string: '${regExString}'`)
 
       const text = [
         'Usage:',
@@ -422,7 +423,7 @@ const commands = {
   update: async function updateCmd (msg, args) {
     await cacheTwitchStreams()
     await updateDisplay()
-    serverLogInfo('Updated manually')
+    serverLog.info('Updated manually')
   }
 }
 
@@ -432,7 +433,7 @@ async function updateDisplay () {
   // Guild availability check
   const guild = discordClient.guilds.get(config.GUILD_ID)
   if (!guild.available) {
-    serverLogError('Guild not available')
+    serverLog.error('Guild not available')
     process.emit('exit')
     return Error('Guild not available')
   }
@@ -440,8 +441,8 @@ async function updateDisplay () {
   // Ghetto permission checks
   const displayChannel = getDisplayChannel()
   const channelPermissions = displayChannel.permissionsFor(discordClient.user)
-  if (channelPermissions.missing(config.REQ_CHANNEL_PERMS).length) {
-    serverLogError(`Bot missing permissions: ${channelPermissions.join(', ')}`)
+  if (!channelPermissions.has(config.REQ_CHANNEL_PERMS)) {
+    serverLog.error(`Bot missing permissions: ${config.REQ_CHANNEL_PERMS.join(', ')}`)
     process.emit('exit')
     return
   }
@@ -452,19 +453,17 @@ async function updateDisplay () {
     try {
       message = await createNewDisplayMessage()
     } catch (error) {
-      serverLogError(error)
-      serverLogInfo('Issue creating new message')
+      serverLog.error(error)
+      serverLog.info('Issue creating new message')
       process.emit('exit')
     }
   }
 
-  const viewFile = state.saved.viewTemplate ? state.saved.viewTemplate : 'minimal'
   try {
-    const view = require(`./views/${viewFile}`)
-    await message.edit(view(state))
+    await message.edit(require('./views/minimal')(state))
   } catch (error) {
-    serverLogError(error)
-    serverLogInfo('Stopping auto-updater.')
+    serverLog.error(error)
+    serverLog.info('Stopping auto-updater.')
     state.autoUpdater.stop()
     throw error
   }
@@ -474,11 +473,11 @@ async function createNewDisplayMessage () {
   const displayChannel = getDisplayChannel()
   try {
     const displayMessage = await displayChannel.send('Hello World')
-    serverLogInfo(`Created new display message in ${displayChannel.name}`)
+    serverLog.info(`Created new display message in ${displayChannel.name}`)
     return displayMessage
   } catch (error) {
     // Not being able to create a message is app breaking (no DM support)
-    serverLogInfo(`Cannot create display message in channel ${displayChannel.name}`)
+    serverLog.info(`Cannot create display message in channel ${displayChannel.name}`)
     process.emit('exit')
   }
 }
@@ -490,7 +489,7 @@ async function getDisplayMessage () {
     msg.author.id === discordClient.user.id).last()
 
   if (!displayMessage) {
-    serverLogError(`Cannot find previous display message in channel ${displayChannel.name}`)
+    serverLog.error(`Cannot find previous display message in channel ${displayChannel.name}`)
   }
 
   return displayMessage
@@ -504,9 +503,7 @@ function getDisplayChannel () {
     chan.name === state.saved.displayChannelName)
 
   if (!channel) {
-    // The channel command checks for valid channel, errors here would suggest
-    // more technical reasons
-    serverLogInfo(`Cannot find channel ${state.saved.displayChannelName} on server`)
+    serverLog.info(`Cannot find channel ${state.saved.displayChannelName} on server`)
     process.emit('exit')
   }
 
@@ -523,15 +520,15 @@ async function clearOtherChannelMessages () {
   try {
     await displayChannel.bulkDelete(messages, true)
   } catch (error) {
-    serverLogError(error)
-    serverLogInfo('BulkDelete failed, attempting invidual deletion...')
+    serverLog.error(error)
+    serverLog.info('BulkDelete failed, attempting invidual deletion...')
 
     try {
       var promise = Promise.resolve()
       messages.forEach(msg => { promise = promise.then(() => msg.delete()) })
     } catch (error) {
-      serverLogError(error)
-      serverLogInfo('Individual deletion failed')
+      serverLog.error(error)
+      serverLog.info('Individual deletion failed')
       throw error
     }
   }
@@ -542,29 +539,31 @@ async function clearOtherChannelMessages () {
 async function cacheTwitchStreams () {
   await cacheTwitchGameData()
 
-  state.twitchStreamCache = await twitchApi.getStreams({ game_id: state.twitchGame.id })
-  serverLogInfo(`${state.twitchStreamCache.length} '${state.twitchGame.name}' streams cached`)
+  const params = { game_id: state.twitchGame.id }
+  state.twitchStreamCache = await twitchApi.getStreams(params)
+  serverLog.info(`${state.twitchStreamCache.length} '${state.twitchGame.name}' streams cached`)
 }
 
 async function cacheTwitchGameData (gameName = state.saved.twitchGameName) {
   if (state.twitchGame) {
     if (state.twitchGame.name.toLowerCase() === gameName.toLowerCase()) {
-      serverLogInfo('Using locally saved game data')
+      serverLog.info('Using locally saved game data')
       return true
     }
   }
 
-  const gameData = await twitchApi.getGames({ name: gameName })
+  const params = { name: gameName }
+  const gameData = await twitchApi.getGame(params)
   state.twitchGame = gameData
   state.saved.twitchGameName = gameData.name
-  serverLogInfo(`Twitch game data cached for '${gameData.name}'`)
+  serverLog.info(`Twitch game data cached for '${gameData.name}'`)
 }
 
 /* Discord event handlers */
 
 async function onDiscordMessage (msg) {
   const stateAssertions = [
-    msg.content.startsWith(state.saved.cmdPrefix),
+    msg.content.startsWith(config.CMD_PREFIX),
     msg.channel.name === state.saved.displayChannelName,
     !msg.author.bot
   ]
@@ -580,7 +579,7 @@ async function onDiscordMessage (msg) {
   }
 
   // Break up tokens into command/args
-  const tokens = msg.content.slice(state.saved.cmdPrefix.length)
+  const tokens = msg.content.slice(config.CMD_PREFIX.length)
 
   if (tokens.length) {
     const args = parseTokens(tokens)
@@ -589,20 +588,20 @@ async function onDiscordMessage (msg) {
     if (Object.prototype.hasOwnProperty.call(commands, cmd)) {
       try {
         await commands[cmd](msg, args)
-        serverLogInfo(`'${msg}' from ${msg.author.username} in ${msg.channel.name}`)
+        serverLog.info(`'${msg}' from ${msg.author.username} in ${msg.channel.name}`)
       } catch (error) {
-        serverLogError(error)
-        serverLogInfo(`Unhandled command error during '${cmd}'`)
+        serverLog.error(error)
+        serverLog.info(`Unhandled command error during '${cmd}'`)
         process.emit('exit')
       }
     } else {
-      msg.reply(`'${cmd}' is not a recognized command. See \`${state.saved.cmdPrefix}cmds\``)
+      msg.reply(`'${cmd}' is not a recognized command. See \`${config.CMD_PREFIX}cmds\``)
     }
   }
 
   /* Helper Functions */
   function parseTokens (str) {
-    // Tokenize characters within double quotes as a single string
+    // Process text between double quotes as a single string
     const tokens = str.match(/[^\s"]+|"([^"]+)"/gi) || []
     return tokens.map(str => stripSurroundingQuotes(str).toLowerCase())
 
@@ -616,19 +615,19 @@ async function onDiscordMessage (msg) {
 }
 
 async function onDiscordClientDisconnect (event) {
-  serverLogInfo('Discord client disconnected')
+  serverLog.info('Discord client disconnected')
 
   if (!state.appIsExiting) {
-    serverLogError(event)
-    serverLogInfo('Attempting client re-connect')
+    serverLog.error(event)
+    serverLog.info('Attempting client re-connect')
 
     // Give it a reconnect attempt in a few seconds
     try {
       await delayedAsync(() => discordClient.connect(), 5000)
-      serverLogInfo('Re-connected')
+      serverLog.info('Re-connected')
     } catch (error) {
-      serverLogError(error)
-      serverLogInfo('Failed to re-connect')
+      serverLog.error(error)
+      serverLog.info('Failed to re-connect')
       throw error
     }
   }
@@ -648,7 +647,7 @@ async function onAppExit (code) {
     new Promise(shortCircuit)
   ]
 
-  serverLogInfo(await Promise.race(teardownProcedures))
+  serverLog.info(await Promise.race(teardownProcedures))
   process.exit(code)
 
   /* Helper Functions */
