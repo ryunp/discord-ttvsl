@@ -30,7 +30,6 @@ Provide a facility to continually update the stream information without manual i
 # Implementation Strategy
 The approach for this bot is to use a static interval to update the stream data. Information about the streams will be formatted to provide the most amount of information in the least amount of space possible.
 
-Here are some visuals of a prototype bot featuring the desired functionality:  
 ![Static Interval Strategy](/media/message_strategy.png)  
 ![Animated Usage Example GIF](/media/ttvsl_simple_example.gif)
 
