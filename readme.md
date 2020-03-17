@@ -35,7 +35,7 @@ Here are some visuals of a prototype bot featuring the desired functionality:
 ![Animated Usage Example GIF](/media/ttvsl_simple_example.gif)
 
 ## Technology
-This first iteration of the bot is more of a quick prototype to get familiar with the technology. It is not setup, nor intended to simultaneously service multiple guilds. It uses [Discord.js](https://github.com/discordjs/discord.js) for the discord client management. Twitch basic custom API module handles app-level OAuth tokens and has a throttling mechinism to prevent API spam.
+This first iteration of the bot is more of a quick prototype to get familiar with the technology. It is not setup, nor intended to simultaneously service multiple guilds. It uses [Discord.js](https://github.com/discordjs/discord.js) for the discord client management. A basic Twitch API module handles app-level OAuth tokens and has a throttling mechinism to prevent API spam.
 
 ### Future Goals
 With the low level of complexity, the full Commando framework is going to be overkill. The bot would not scale very well to multiple guilds without proper caching systems due to the limit of API rates. A more modular command struture will be looked at next.
