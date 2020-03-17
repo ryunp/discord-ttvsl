@@ -65,7 +65,7 @@ The stream title is hard coded to a maximum display of 80 characters. Each strea
 Commands are prefixed with an exclimation mark (`!`). The `args` column uses parenthesis and pipe characters to indicate a set of inputs that are acceptable. Anything between angled bracket characters (less/greater than) indicates what type of information it accepts.
 |Command|args|Example|Descrption|
 |---|---|---|---|
-|admins|(add\|del) <USER_ID>|`!admin add 123456789`|Add or delete users that can operate the bot (only accepts `user_id`s, no `usernames`)|
+|admins|(add\|del) <USER_ID>|`!admins add 123456789`|Add or delete users that can operate the bot (only accepts `user_id`s, no `usernames`)|
 |autoupdate|(true\|false)|`!autoupdate true`|Enable or disables the auto stream updates feature|
 |channel|<CHANNEL_NAME>|`!channel twitch-streams`|Set the channel for displaying streams (supports '#channel' and 'channel'|
 |cmds||`!cmds`|Lists available commands|
@@ -79,5 +79,5 @@ Commands are prefixed with an exclimation mark (`!`). The `args` column uses par
 |showgame|(true\|false)|`!showgame true`|Toggles header's game name|
 |showlastupdated|(true\|false)|`!showlastupdated false`|Toggles header's last updated information|
 |showstreamdetails|(true\|false)|`!showstreamdetails true`|Toggles stream's extra details|
-|titlefilter|<REGEX_STRING>|`!filter median ?(xl)?\|mxl`|Set the RegEx string that inclusively filters stream titles (no delimiters or flags)|
+|titlefilter|<REGEX_STRING>|`!titlefilter median ?(xl)?\|mxl`|Set the RegEx string that inclusively filters stream titles (no delimiters or flags)|
 |update||`!update`|Manually update the stream list|
