@@ -35,17 +35,13 @@ Here are some visuals of a prototype bot featuring the desired functionality:
 ![Animated Usage Example GIF](/media/ttvsl_simple_example.gif)
 
 ## Technology
-This first iteration of the bot is more of a quick prototype to get familiar with the technology. It is not setup to simultaneously service multiple guilds. It uses [Discord.js](https://github.com/discordjs/discord.js) for the discord client management. Twitch API is handled through very basic custom request wrappers.
+This first iteration of the bot is more of a quick prototype to get familiar with the technology. It is not setup, nor intended to simultaneously service multiple guilds. It uses [Discord.js](https://github.com/discordjs/discord.js) for the discord client management. Twitch basic custom API module handles app-level OAuth tokens and has a throttling mechinism to prevent API spam.
 
 ### Future Goals
-The next iteration is to add Discord.js's [Commando](https://discord.js.org/#/docs/commando/master/general/welcome) framework and [TwitchJS](https://github.com/twitch-js/twitch-js).
+With the low level of complexity, the full Commando framework is going to be overkill. The bot would not scale very well to multiple guilds without proper caching systems due to the limit of API rates. A more modular command struture will be looked at next.
 
-- Integrate Discordjs Commando command framework
-- Integrate TwitchJS API library
-- Ensure app state handles multiple guilds
-- Improve stream data caching strategy to handle multiple guilds
-
-Many examples of discord bots will inject their application state into the object structure of the Client object. This gives per-guild state an easily accessable location during run-time, but still leaves the questions of persistence. Using the current strategy of an external app state object should keep discord client and application state isolated.
+- ~~Add app-level OAuth support~~ Done
+- Integrate Discordjs Commando command framework (Maybe)
 
 ## Display 
 Two sections, **Header** and **Stream List**, make up the display layout. Sections marked with an asterisk can have their visibility changed with a [command](#commands).
