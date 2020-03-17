@@ -1,5 +1,5 @@
 const d3 = require('d3-time-format')
-const Discord = require('discord.js')
+const discordText = require('../lib/discordText.js')
 
 const ms = require('../lib/milliseconds')
 const config = require('../config')
@@ -24,15 +24,15 @@ module.exports = function MinimalView (state) {
   ].filter(Boolean).join(' ')
 
   // Prepare content header Game Name status
-  const gameNameStr = Discord.util.escapeBold(state.saved.twitchGameName)
+  const gameNameStr = discordText.bold(state.saved.twitchGameName)
 
   // Prepare content header Stream Title Filter status
   const totalStreamCount = state.twitchStreamCache.length
   const filteredStreamCount = streamerList.length
   const displayCountStr = `${filteredStreamCount}/${totalStreamCount}`
   const titleFilterStr = [
-    `Filter: ${Discord.util.escapeInlineCode(state.saved.streamTitlefilter)}`,
-    Discord.util.escapeItalic(`(displaying ${displayCountStr})`)
+    `Filter: ${discordText.codeInline(state.saved.streamTitlefilter)}`,
+    discordText.italic(`(displaying ${displayCountStr})`)
   ].join(' ')
 
   // Prepare content header Last Updated status
@@ -86,7 +86,7 @@ function buildStreamInfo (state, streamData) {
   // Build stream info
   const streamInfoStr = [
     streamDetailsStr,
-    Discord.util.escapeItalic(streamTitleStr)
+    discordText.italic(streamTitleStr)
   ].join('\n')
 
   // Return final composition

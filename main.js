@@ -14,12 +14,13 @@ const process = require('process')
 const auth = require('./auth')
 const config = require('./config')
 
-const DynamicInterval = require('./lib/DynamicInterval')
-const TwitchApi = require('./lib/TwitchApi')
-const milliseconds = require('./lib/milliseconds')
-const State = require('./lib/state')
 const delayedAsync = require('./lib/delayedAsync')
+const discordText = require('./lib/discordText')
+const DynamicInterval = require('./lib/DynamicInterval')
+const milliseconds = require('./lib/milliseconds')
 const serverLog = require('./lib/serverLog')
+const State = require('./lib/state')
+const TwitchApi = require('./lib/TwitchApi')
 
 const msToTimeUnits = ms => milliseconds.toTimeUnits(ms, { units: ['d', 'h', 'm'] })
 const msFromTimeUnits = args => milliseconds.fromTimeUnits(args)
@@ -42,9 +43,10 @@ async function onStateLoad (loadedState) {
   // Init Twitch API
   const twitchCreds = {
     clientId: auth.twitchBotId,
+    clientSecret: auth.twitchBotSecret,
     accessToken: state.saved.twitchAccessToken
   }
-  const onNewTwitchToken = token => { state.saved.twitchAccessToken = token }
+  const onNewTwitchToken = token => { state.saved.twitchAccessToken = token; serverLog.info('refresh:', token) }
   twitchApi = new TwitchApi(twitchCreds, onNewTwitchToken)
 
   // Init Discord client
@@ -129,9 +131,9 @@ const commands = {
         var resultMsg
 
         if (user) {
-          resultMsg = discordClient.util.codeInline(user.tag)
+          resultMsg = discordText.codeInline(user.tag)
         } else {
-          resultMsg = `${discordClient.util.codeInline(delId)} (no longer in server)`
+          resultMsg = `${discordText.codeInline(delId)} (no longer in server)`
         }
 
         state.saved.adminUserIds = adminIds.filter(id => id !== delId)
@@ -553,10 +555,15 @@ async function cacheTwitchGameData (gameName = state.saved.twitchGameName) {
   }
 
   const params = { name: gameName }
-  const gameData = await twitchApi.getGame(params)
-  state.twitchGame = gameData
-  state.saved.twitchGameName = gameData.name
-  serverLog.info(`Twitch game data cached for '${gameData.name}'`)
+  try {
+    const gameData = await twitchApi.getGame(params)
+    state.twitchGame = gameData
+    state.saved.twitchGameName = gameData.name
+    serverLog.info(`Twitch game data cached for '${gameData.name}'`)
+  } catch (error) {
+    serverLog.error(`GameData Cache fail: ${error.message}`)
+    throw error
+  }
 }
 
 /* Discord event handlers */
