@@ -56,8 +56,13 @@ module.exports = function MinimalView (state) {
       buildActiveStreamInfo(stream, state.saved.showStreamDetails)
     ).join('\n\n')
   } else {
+    const headerStr = [
+      'No online streams found.',
+      state.streamHistory.length ? 'Past streams:' : null
+    ].filter(Boolean).join(' ')
+    
     contentBody = [
-      'No online streams found. Past streams:',
+      headerStr,
       '',
       state.streamHistory.splice(0, state.saved.streamDisplayMax).map(stream =>
         buildOfflineStreamInfo(stream)
