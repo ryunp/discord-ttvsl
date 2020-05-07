@@ -543,7 +543,7 @@ async function getTwitchStreams () {
   await getTwitchGame()
 
   // Make a copy of current streamers
-  const prevStreamers = twitchStreamCache.map(stream => ({ ...stream }))
+  const prevStreamers = state.twitchStreamCache.map(stream => ({ ...stream }))
 
   // Query Twitch for current streamers
   const params = { game_id: state.twitchGame.id }
