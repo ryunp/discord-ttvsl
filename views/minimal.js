@@ -102,11 +102,11 @@ function buildOfflineStreamInfo (stream) {
   const streamUrl = `https\\://twitch.tv/${stream.user_name}`
 
   // Prepare stream info Stats (views, uptime)
-  const upTime = msToTimeUnits(Date.now() - new Date(stream.started_at))
-  let [endDate, endTime] = stream.ended_at.split('T')
-  endTime = endTime.split(':').slice(0, 2).join(':')
-  const endDateTime = `${endDate} at ${endTime} UTC`
-  const streamStats = `(ended ${upTime} stream on ${endDateTime})`
+  // const upTime = msToTimeUnits(Date.now() - new Date(stream.started_at))
+  // let [endDate, endTime] = stream.ended_at.split('T')
+  // endTime = endTime.split(':').slice(0, 2).join(':')
+  // const endDateTime = `${endDate} at ${endTime} UTC`
+  // const streamStats = `(ended ${upTime} stream on ${endDateTime})`
 
   // Prepare stream info Title
   const streamTitle = (stream.title.length > config.MAX_TITLE_LEN)
@@ -114,11 +114,11 @@ function buildOfflineStreamInfo (stream) {
     : stream.title.trim()
 
   // Build stream details
-  const streamHeading = `${streamUrl} ${streamStats}`
+  // const streamHeading = `${streamUrl} ${streamStats}`
 
   // Build stream info
   const streamInfoStr = [
-    streamHeading,
+    streamUrl, //streamHeading
     discordText.italic(streamTitle)
   ].join('\n')
 
