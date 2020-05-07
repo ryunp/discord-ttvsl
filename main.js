@@ -1,13 +1,11 @@
 /**
  * Author: Ryan Paul
- * Date: 4/13/19
- * Updated: 2/10/20
+ * Creation Date: 4/13/19
  * Description: Discord bot to pull, filter, and display TwitchTV streams
  *
  * Register Discord Bot: https://discordapp.com/oauth2/authorize?&client_id=<ID>&scope=bot
  */
 
-// const Twitch = require('twitch-js')
 const Discord = require('discord.js')
 const process = require('process')
 
@@ -32,7 +30,7 @@ var discordClient
 process.once('exit', onAppExit)
 process.once('SIGINT', onAppExit)
 
-State.load().then(onStateLoad)
+State.load().then(onStateLoad).catch(serverLog.error)
 
 async function onStateLoad (loadedState) {
   state = loadedState
@@ -46,7 +44,10 @@ async function onStateLoad (loadedState) {
     clientSecret: auth.twitchBotSecret,
     accessToken: state.saved.twitchAccessToken
   }
-  const onNewTwitchToken = token => { state.saved.twitchAccessToken = token; serverLog.info('refresh:', token) }
+  const onNewTwitchToken = token => {
+    state.saved.twitchAccessToken = token
+    serverLog.info('AccessToken Renewed:', token)
+  }
   twitchApi = new TwitchApi(twitchCreds, onNewTwitchToken)
 
   // Init Discord client
@@ -85,7 +86,7 @@ async function onDiscordReady () {
 
 // Fetch new data and refresh display
 async function updateCacheAndRender () {
-  await cacheTwitchStreams()
+  await getTwitchStreams()
   await updateDisplay()
 }
 
@@ -174,7 +175,7 @@ const commands = {
     async function enable () {
       if (state.autoUpdater.isActive()) { return }
 
-      await cacheTwitchStreams()
+      await getTwitchStreams()
       await updateDisplay()
       state.saved.autoUpdate = true
       state.autoUpdater.start()
@@ -239,7 +240,7 @@ const commands = {
     state.saved.twitchGameName = args.join(' ')
 
     try {
-      await cacheTwitchStreams()
+      await getTwitchStreams()
       state.saved.streamTitlefilter = '.'
       await updateDisplay()
       await await msg.channel.send(`Changed game to \`${state.twitchGame.name}\``)
@@ -423,7 +424,7 @@ const commands = {
   },
 
   update: async function updateCmd (msg, args) {
-    await cacheTwitchStreams()
+    await getTwitchStreams()
     await updateDisplay()
     serverLog.info('Updated manually')
   }
@@ -538,15 +539,34 @@ async function clearOtherChannelMessages () {
 
 /* Caching */
 
-async function cacheTwitchStreams () {
-  await cacheTwitchGameData()
+async function getTwitchStreams () {
+  await getTwitchGame()
 
+  // Make a copy of current streamers
+  const prevStreamers = twitchStreamCache.map(stream => ({ ...stream }))
+
+  // Query Twitch for current streamers
   const params = { game_id: state.twitchGame.id }
   state.twitchStreamCache = await twitchApi.getStreams(params)
   serverLog.info(`${state.twitchStreamCache.length} '${state.twitchGame.name}' streams cached`)
+
+  // Went Offine: Streams that were previously stored and no longer online
+  const wentOffline = prevStreamers.filter(prevStream => {
+    return !state.twitchStreamCache.some(stream =>
+      prevStream.user_id === stream.user_id
+    )
+  })
+
+  // Keep historical records of streams, up to twice the max list size
+  const ended_at = new Date().toISOString()
+  const streamRecords = wentOffline.map(stream => ({ ...stream, ended_at }))
+  state.streamHistory = [
+    ...streamRecords,
+    ...state.streamHistory
+  ].slice(-1 * config.MAX_STREAM_LIST * 2)
 }
 
-async function cacheTwitchGameData (gameName = state.saved.twitchGameName) {
+async function getTwitchGame (gameName = state.saved.twitchGameName) {
   if (state.twitchGame) {
     if (state.twitchGame.name.toLowerCase() === gameName.toLowerCase()) {
       serverLog.info('Using locally saved game data')

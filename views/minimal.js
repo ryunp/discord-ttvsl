@@ -9,8 +9,8 @@ const msToTimeUnits = value => ms.toTimeUnits(value, { units: ['d', 'h', 'm'] })
 module.exports = function MinimalView (state) {
   // Prepare content body stream list
   const titleRegExp = new RegExp(state.saved.streamTitlefilter, 'gi')
-  const streamerList = state.twitchStreamCache
-    .filter(streamData => titleRegExp.test(streamData.title))
+  const streamList = state.twitchStreamCache
+    .filter(stream => titleRegExp.test(stream.title))
     .sort(objPropSort('viewer_count'))
     .splice(0, state.saved.streamDisplayMax)
 
@@ -28,7 +28,7 @@ module.exports = function MinimalView (state) {
 
   // Prepare content header Stream Title Filter status
   const totalStreamCount = state.twitchStreamCache.length
-  const filteredStreamCount = streamerList.length
+  const filteredStreamCount = streamList.length
   const displayCountStr = `${filteredStreamCount}/${totalStreamCount}`
   const titleFilterStr = [
     `Filter: ${discordText.codeInline(state.saved.streamTitlefilter)}`,
@@ -51,42 +51,75 @@ module.exports = function MinimalView (state) {
 
   // Build content body streamer list
   let contentBody
-  if (streamerList.length) {
-    contentBody = streamerList.map(streamData =>
-      buildStreamInfo(state, streamData)
+  if (streamList.length) {
+    contentBody = streamList.map(stream =>
+      buildActiveStreamInfo(stream, state.saved.showStreamDetails)
     ).join('\n\n')
   } else {
-    contentBody = 'No targeted streams detected. Stay awhile and listen!'
+    contentBody = [
+      'No online streams found. Past streams:',
+      '',
+      state.streamHistory.splice(0, state.saved.streamDisplayMax).map(stream =>
+        buildOfflineStreamInfo(stream)
+      ).join('\n\n')
+    ].join('\n')
   }
 
   // Return final composition
   return `${contentHeader}\n\n${contentBody}`
 }
 
-function buildStreamInfo (state, streamData) {
+function buildActiveStreamInfo (stream, SHOW_DETAILS) {
   // Prepare stream info URL
-  const streamUrlStr = `https://twitch.tv/${streamData.user_name}`
+  const streamUrl = `https://twitch.tv/${stream.user_name}`
 
   // Prepare stream info Stats (views, uptime)
-  const upTimeStr = msToTimeUnits(Date.now() - new Date(streamData.started_at))
-  const viewCountStr = streamData.viewer_count
-  const streamStatsStr = `(${upTimeStr} uptime, ${viewCountStr} viewers)`
+  const upTime = msToTimeUnits(Date.now() - new Date(stream.started_at))
+  const streamStats = `(${upTime} uptime, ${stream.viewer_count} viewers)`
 
   // Prepare stream info Title
-  const streamTitleStr = (streamData.title.length > config.MAX_TITLE_LEN)
-    ? `${streamData.title.substring(0, config.MAX_TITLE_LEN).trim()}...`
-    : streamData.title.trim()
+  const streamTitle = (stream.title.length > config.MAX_TITLE_LEN)
+    ? `${stream.title.substring(0, config.MAX_TITLE_LEN).trim()}...`
+    : stream.title.trim()
 
   // Build stream details
-  const streamDetailsStr = [
-    `<${streamUrlStr}>`,
-    state.saved.showStreamDetails ? streamStatsStr : null
-  ].filter(Boolean).join(' ')
+  const streamHeading = SHOW_DETAILS
+    ? `${discordText.urlNoPreview(streamUrl)} ${streamStats}`
+    : discordText.urlNoPreview(streamUrl)
 
   // Build stream info
   const streamInfoStr = [
-    streamDetailsStr,
-    discordText.italic(streamTitleStr)
+    streamHeading,
+    discordText.italic(streamTitle)
+  ].join('\n')
+
+  // Return final composition
+  return streamInfoStr
+}
+
+function buildOfflineStreamInfo (stream) {
+  // Prepare stream info URL (escape URL symbol to remove auto-linking)
+  const streamUrl = `https\\://twitch.tv/${stream.user_name}`
+
+  // Prepare stream info Stats (views, uptime)
+  const upTime = msToTimeUnits(Date.now() - new Date(stream.started_at))
+  let [endDate, endTime] = stream.ended_at.split('T')
+  endTime = endTime.split(':').slice(0, 2).join(':')
+  const endDateTime = `${endDate} at ${endTime} UTC`
+  const streamStats = `(ended ${upTime} stream on ${endDateTime})`
+
+  // Prepare stream info Title
+  const streamTitle = (stream.title.length > config.MAX_TITLE_LEN)
+    ? `${stream.title.substring(0, config.MAX_TITLE_LEN).trim()}...`
+    : stream.title.trim()
+
+  // Build stream details
+  const streamHeading = `${streamUrl} ${streamStats}`
+
+  // Build stream info
+  const streamInfoStr = [
+    streamHeading,
+    discordText.italic(streamTitle)
   ].join('\n')
 
   // Return final composition
