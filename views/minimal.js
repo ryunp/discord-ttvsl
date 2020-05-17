@@ -57,16 +57,17 @@ module.exports = function MinimalView (state) {
     ).join('\n\n')
   } else {
     const headerStr = [
-      'No online streams found.',
+      discordText.bold('No online streams found.'),
       state.streamHistory.length ? 'Past streams:' : null
     ].filter(Boolean).join(' ')
-    
+
     contentBody = [
       headerStr,
       '',
-      state.streamHistory.splice(0, state.saved.streamDisplayMax).map(stream =>
-        buildOfflineStreamInfo(stream)
-      ).join('\n\n')
+      state.streamHistory
+        .splice(0, state.saved.streamDisplayMax)
+        .map(stream => buildOfflineStreamInfo(stream))
+        .join('\n\n')
     ].join('\n')
   }
 
