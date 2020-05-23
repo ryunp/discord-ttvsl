@@ -551,19 +551,25 @@ async function getTwitchStreams () {
   serverLog.info(`${state.twitchStreamCache.length} '${state.twitchGame.name}' streams cached`)
 
   // Went Offine: Streams that were previously stored and no longer online
-  const wentOffline = prevStreamers.filter(prevStream => {
-    return !state.twitchStreamCache.some(stream =>
-      prevStream.user_id === stream.user_id
+  const wentOffline = prevStreamers
+    .filter(prevStream =>
+      !state.twitchStreamCache.some(stream =>
+        prevStream.user_id === stream.user_id
+      )
     )
-  })
 
-  // Keep historical records of streams, up to twice the max list size
+  // Filter MXL and add offline time
+  const titleRegExp = new RegExp(state.saved.streamTitlefilter, 'gi')
   const ended_at = new Date().toISOString()
-  const streamRecords = wentOffline.map(stream => ({ ...stream, ended_at }))
+  const streamRecords = wentOffline
+    .filter(stream => titleRegExp.test(stream.title))
+    .map(stream => ({ ...stream, ended_at }))
+
+  // Save MXL stream history, newest first
   state.streamHistory = [
     ...streamRecords,
     ...state.streamHistory
-  ].slice(-1 * config.MAX_STREAM_LIST * 2)
+  ].slice(0, config.MAX_STREAM_LIST)
 }
 
 async function getTwitchGame (gameName = state.saved.twitchGameName) {
