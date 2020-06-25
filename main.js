@@ -48,7 +48,6 @@ async function onStateLoad (loadedState) {
   const onTwitchTokenRefresh = ({ token, expiresAt }) => {
     state.saved.twitchAccessToken = token
     state.saved.twitchTokenExpiresAt = expiresAt
-    serverLog.info('AccessToken Renewed:', token)
   }
   twitchApi = new TwitchApi(twitchCreds, onTwitchTokenRefresh)
 
