@@ -42,13 +42,15 @@ async function onStateLoad (loadedState) {
   const twitchCreds = {
     clientId: auth.twitchBotId,
     clientSecret: auth.twitchBotSecret,
-    accessToken: state.saved.twitchAccessToken
+    accessToken: state.saved.twitchAccessToken,
+    tokenExpiresAt: state.saved.twitchTokenExpiresAt || Date.now()
   }
-  const onNewTwitchToken = token => {
+  const onTwitchTokenRefresh = ({ token, expiresAt }) => {
     state.saved.twitchAccessToken = token
+    state.saved.twitchTokenExpiresAt = expiresAt
     serverLog.info('AccessToken Renewed:', token)
   }
-  twitchApi = new TwitchApi(twitchCreds, onNewTwitchToken)
+  twitchApi = new TwitchApi(twitchCreds, onTwitchTokenRefresh)
 
   // Init Discord client
   discordClient = new Discord.Client()
